@@ -109,10 +109,59 @@
     <h2>Kamon requires aspectjweaver to RUN</h2>
     <p>You must provide aspectjweaver 1.74/1.72 for instrumentation. Take a look to <a href="http://kamon.io/get-started/" target="_blank">get started</a></p> 
     <p>
+     If you are going to run this outside the sbt console, you must provide the JAVA_OPTS with the aspectjweaver.jar. 
       <pre>
-        <code>-javaagent:/path/to/file/aspectjweaver-1.7.4.jar 
+        <code>
+          export JAVA_OPTS=-javaagent:/path/to/file/aspectjweaver-1.7.4.javaScript
         </code>
       </pre>
     </p> 
+    <p>Footnote: In the <a href="#code/build.sbt"> build.sbt</a> the last section: 
+    <pre>
+    <code>
+      fork in run := true
+      javaOptions in run += "-javaagent:/path/to/file/aspectjweaver.jar"
+    </code></pre> are only required if you are going to run your project within sbt console with sbt run command </p>
+  </div>
+  <div>
+    <h2>Running Results</h2>
+    <p>If you <a href="#run" class="shortcut">run</a> the application will display, first an example that there is no trace enabled. If you look at the log file it says something like:
+    <pre>
+    <code>
+log format: timestamp level [thread-name][traceContext][actor-path] message
+
+16:06:05.095 INFO [simple-context-propagation-akka.actor.default-dispatcher-3][undefined][akka://simple-context-propagation/user/mainActor/upper-caser/length-calculator] Calculating the length of: [HELLO WITHOUT CONTEXT]
+16:06:05.104 INFO [simple-context-propagation-akka.actor.default-dispatcher-2][undefined][akka://simple-context-propagation/user/mainActor] Length [21]
+    </code>
+    </pre>
+    The [traceContext] is undefined, and that's okey because we are not setting it in <a href="#code/src/main/scala/UpperCaser.scala" class="shortcut"> JobSender Actor </a>. Look at the receive method:
+    <pre>
+      <code>
+      def receive = {
+        case Begin &#8594; {
+          for(_ &#8592; 1 to 5) {
+            upperCaser ! s"Hello without context"
+          }}}
+      </code>
+    </pre>
+    But if you take a look to the next for we have set the <code>TraceContext</code>, you will note that it requires an implicit ActorSystem.
+    <pre>
+      <code>
+       implicit val system = context.system
+        for(_ &#8592; 1 to 5) {
+          //TraceRecorder requires an implicit ActorSystem
+          TraceRecorder.withNewTraceContext("jobSender") {
+            upperCaser ! "Hello World with TraceContext"
+          }
+        }
+
+      Now the log file shows the traceContext for my machine "dwarf-4" and "dwarf-5":
+16:06:05.116 INFO [simple-context-propagation-akka.actor.default-dispatcher-3][dwarf-4][akka://simple-context-propagation/user/mainActor/upper-caser/length-calculator] Calculating the length of: [HELLO WORLD WITH TRACECONTEXT]
+16:06:05.117 INFO [simple-context-propagation-akka.actor.default-dispatcher-3][dwarf-5][akka://simple-context-propagation/user/mainActor/upper-caser/length-calculator] Calculating the length of: [HELLO WORLD WITH TRACECONTEXT]
+16:06:05.120 INFO [simple-context-propagation-akka.actor.default-dispatcher-6][dwarf-4][akka://simple-context-propagation/user/mainActor] Length [29]
+16:06:05.122 INFO [simple-context-propagation-akka.actor.default-dispatcher-6][dwarf-5][akka://simple-context-propagation/user/mainActor] Length [29]
+      </code>
+    </pre>
+    If you see the big picture, you will be able to trace a request and follow your logs easily.
   </div>
 </body>
