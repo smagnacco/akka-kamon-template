@@ -1,7 +1,118 @@
+<html>
+<head>
+  <title>Akka with Kamon - Monitoring, Reporting and Tracing a reactive applications</title>
+</head>
+
 <body>
   <div>
-  <h2>A reactive world requires reactive monitoring tools</h2>
-  Kamon is a set of tools that helps you to get metrics out of your reactive applications and help you with log tracing.
-  Check http://kamon.io/ for more information  
+  
+    <h2>A reactive world requires monitoring tools</h2>
+    <p>
+    Kamon is a set of tools that helps you to get metrics out of your reactive applications and help you with log tracing.
+    </p>
+    <p>
+    Be prepared to get metrics of akka and spray applications:
+    <ul>
+      <li>Message processing times</li>
+      <li>Time waiting in mailbox</li>
+      <li>Mailbox sizes</li>
+      <li>Message flow tracing</li>
+      <li>Dispatchers health</li>
+      <li>Processing time for incoming requests</li>
+      <li>spray-client request metrics</li>
+      <li>Automatic trace token propagation</li>
+  </ul>
+  </p>
+  <p>
+  And also ready for sending reports to known tools like NewRelic.
+  Kamon can get all your metrics there
+  <ul>
+    <li>Web transactions</li>
+    <li>External Services</li>
+    <li>Errors rate</li>
+    <li>Apdex score</li>
+    <li>Custom metrics</li>
+  </ul>
+  </p>
+  </div>
+  
+  <div>
+    <h2>Traces</h2>
+    <p>
+    A trace is a story, told by some events in your application that explain how the execution of a particular portion of functionality went during a single invocation. For example, if in order to fulfil a <code>GET</code> request to the <code>/users/kamon</code> resource, a application sends a message to an actor, which reads the user data from a database and sends a message back with the user information to finish the request, all those interactions would be considered as part of the same trace.
+    </p>
+    <p>
+    If the application described above were to handle a hundred clients requesting for user&#39;s details, there might be a handful of database access actors handling those requests. When the dispatcher gives an actor some time to execute, it will process as many messages as possible (as per dispatcher configuration) before the Thread is taken away from it, but during that time it is incorrect to say that either the actor or the Thread are tied to a trace, because each message might come from a different source which is probably waiting for a different response.
+    </p>
+    <p>
+    Back in the day tracing used to be simpler: if you use single dedicated <code>Thread</code> during the execution of a request and everything related to that request happens in that single <code>Thread</code>, then you could use a <code>ThreadLocal</code> and store all the valuable information you want about the processing of that request from anywhere in the codebase and flush it all when the request is finished. Sounds easy, right?, hold on that thought, it isn&#39;t that easy in the reactive world!
+    </p>
+    <p>
+    When developing reactive applications on top of Akka the perspective of a trace changes from &#34;thread locali&#34; to &#34;event local&#34; and in order to cope with this Kamon provides the notion of a <code>TraceContext</code> to group all related events and collect the information we need about them. Once a <code>TraceContext</code> is created, Kamon will propagate it automatically under specific conditions and once the <code>TraceContext</code> is finished, all the gathered information is flushed. The <code>TraceContext</code> is effectively stored in a ThreadLocal, but only during the processing of certain specific events and then it is cleared out to avoid propagating it to unrelated events.
+    </p> 
+    <p> 
+    Rules for <code>TraceContext</code>
+    <ul>
+    <li>Actor creation</li>
+    <li>Sending messages to an Actor</li>
+    <li>Using ActorLogging</li>
+    <li>Creating and transforming a Future</li>
+    </ul>
+    </p>
+  </div>
+  <div>
+    <h2>Starting a TraceContext</h2>
+    <p>The <code>TraceRecorder</code> companion object provides a simple API to create, propagate and finish a <code>TraceContext</code>. To start a new context use the <code>TraceRecorder.withNewTraceContext(..)</code> method. Let&#39;s dig into this with a simple example:
+    </p>
+    <p>Suppose you want to trace a process that involves a couple actors, and you want to make sure all related events become part of the same <code>TraceContext</code>. Our actors might look like the one shown in <a href="#code/src/main/scala/UpperCaser.scala" class="shortcut">UpperCaser.scala</a> 
+    </p> 
+    <p>Go to <a href="#run" class="shortcut">Run</a>. This runs the <a href="#code/src/main/scala/TracingExampleApp.scala" class="shortcut">TracingExampleApp.scala</a>
+    </p>
+  </div>
+  <div>
+    <h2>Logging</h2>
+    <p>
+    Kamon provides a very simple way to make sure that the trace token available when the log statement was executed is included in your logs, no matter if you are logging synchronously or asynchronously. Kamon provides built in support for logging with Logback, but extending the support to any other logging framework should be a trivial task.
+    </p>
+    <p>
+    When using <code>ActorLogging</code> all logging events are sent to your actor system&#39;s event stream and then picked up by your registered listeners for actual logging. Akka captures the actor, thread and timestamp from the instant in which the event was generated and makes that info available when performing the actual logging. As an addition to this, Kamon attaches the <code>TraceContext</code> that is present when creating the log events and makes it available when the actual logging is performed. If you are using the loggers directly then the <code>TraceContext</code> should be already available.
+    </p>
+    <p>
+    <code>TraceRecorder.currentContext</code> gives you access to the currently <code>TraceContext</code>, so the following expression gives you the trace token for the currently available context:
+    </p>
+    <pre><code>TraceRecorder.currentContext.map(_.token)</code></pre>
+    <p>
+    Kamon already packs a Logback converter that you can register in your <code>logback.xml</code> file and use in your logging patterns. Go to <a href="#code/src/main/resources/loggack.xml" class="shortcut">logback.xml</a> file
+    </p>
+  </div>
+  <div>
+    <h2>Akka Module Setup</h2>
+    <p>Apart from scala dependency, Kamon depends on:
+    <ul>
+      <li>aspectj</li>
+      <li>akka-actor</li>
+      <li>spray (only for spray enabled apps)</li>
+      <li>newrelic (only for new relic enabled apps)</li>
+    </ul>
+    </p> 
+    <p>
+    Kamon works with sbt 0.12.3, you can see <a href="#code/project/build.properties" class="shortcut">build.properties</a>.
+    </p> 
+    <p> 
+    For building with sbt, check <a href="#code/build.sbt" class="shortcut">build.sbt</a>
+    </p> 
+    <p> 
+    And finally <a href="#code/project/plugins.sbt">plugins.sbt</a>. However, sbt-idea is not mandatory, you should give a try to intellij.
+    </p>
+  </div>
+  <div>
+    <h2>Kamon requires aspectjweaver to RUN</h2>
+    <p>You must provide aspectjweaver 1.74/1.72 for instrumentation. Take a look to <a href="http://kamon.io/get-started/" target="_blank">get started</a></p> 
+    <p>
+      <pre>
+        <code>-javaagent:/path/to/file/aspectjweaver-1.7.4.jar 
+        </code>
+      </pre>
+    </p> 
   </div>
 </body>
