@@ -1,12 +1,12 @@
 <html>
 <head>
-  <title>Akka with Kamon - Monitoring, Reporting and Tracing a reactive applications</title>
+  <title>Akka with Kamon - Monitoring and Reporting and Tracing a reactive applications</title>
 </head>
 
 <body>
   <div>
   
-    <h2>A reactive world requires monitoring tools</h2>
+    <h2>A reactive monitoring tool</h2>
     <p>
     Kamon is a set of tools that helps you to get metrics out of your reactive applications and help you with log tracing.
     </p>
@@ -24,7 +24,7 @@
   </ul>
   </p>
   <p>
-  And also ready for sending reports to known tools like NewRelic.
+  And also ready for sending reports to known tools like <a href="http://newrelic.com/">New Relic</a>.
   Kamon can get all your metrics there
   <ul>
     <li>Web transactions</li>
@@ -60,15 +60,17 @@
     </ul>
     </p>
   </div>
+
   <div>
     <h2>Starting a TraceContext</h2>
     <p>The <code>TraceRecorder</code> companion object provides a simple API to create, propagate and finish a <code>TraceContext</code>. To start a new context use the <code>TraceRecorder.withNewTraceContext(..)</code> method. Let&#39;s dig into this with a simple example:
     </p>
-    <p>Suppose you want to trace a process that involves a couple actors, and you want to make sure all related events become part of the same <code>TraceContext</code>. Our actors might look like the one shown in <a href="#code/src/main/scala/UpperCaser.scala" class="shortcut">UpperCaser.scala</a> 
+    <p>Suppose you want to trace a process that involves a couple actors, and you want to make sure all related events become part of the same <code>TraceContext</code>. Our actors might look like the one shown in <a href="#code/src/main/scala/AkkaWithKamonExample.scala" class="shortcut">AkkaWithKamonExample.scala</a>
     </p> 
-    <p>Go to <a href="#run" class="shortcut">Run</a>. This runs the <a href="#code/src/main/scala/TracingExampleApp.scala" class="shortcut">TracingExampleApp.scala</a>
+    <p>Go to <a href="#run" class="shortcut">Run</a>. This runs the <a href="#code/src/main/scala/AkkaWithKamonExample.scala" class="shortcut">AkkaWithKamonExample.scala</a>
     </p>
   </div>
+
   <div>
     <h2>Logging</h2>
     <p>
@@ -82,9 +84,10 @@
     </p>
     <pre><code>TraceRecorder.currentContext.map(_.token)</code></pre>
     <p>
-    Kamon already packs a Logback converter that you can register in your <code>logback.xml</code> file and use in your logging patterns. Go to <a href="#code/src/main/resources/loggack.xml" class="shortcut">logback.xml</a> file
+    Kamon already packs a Logback converter that you can register in your <code>logback.xml</code> file and use in your logging patterns. Go to <a href="#code/src/main/resources/logback.xml" class="shortcut">logback.xml</a> file
     </p>
   </div>
+
   <div>
     <h2>Akka Module Setup</h2>
     <p>Apart from scala dependency, Kamon depends on:
@@ -92,11 +95,11 @@
       <li>aspectj</li>
       <li>akka-actor</li>
       <li>spray (only for spray enabled apps)</li>
-      <li>newrelic (only for new relic enabled apps)</li>
+      <li><a href="http://newrelic.com/">New Relic</a> (only for those apps)</li>
     </ul>
     </p> 
     <p>
-    Kamon works with sbt 0.12.3, you can see <a href="#code/project/build.properties" class="shortcut">build.properties</a>.
+    Kamon works with sbt 0.13.1, you can see <a href="#code/project/build.properties" class="shortcut">build.properties</a>.
     </p> 
     <p> 
     For building with sbt, check <a href="#code/build.sbt" class="shortcut">build.sbt</a>
@@ -107,7 +110,7 @@
   </div>
   <div>
     <h2>Kamon requires aspectjweaver to RUN</h2>
-    <p>You must provide aspectjweaver 1.74/1.72 for instrumentation. Take a look to <a href="http://kamon.io/get-started/" target="_blank">get started</a></p> 
+    <p>You must provide aspectjweaver 1.74 for instrumentation. Take a look to <a href="http://kamon.io/get-started/" target="_blank">get started</a></p>
     <p>
      If you are going to run this outside the sbt console, you must provide the JAVA_OPTS with the aspectjweaver.jar. 
       <pre>
@@ -125,7 +128,7 @@
   </div>
   <div>
     <h2>Running Results</h2>
-    <p>If you <a href="#run" class="shortcut">run</a> the application will display, first an example that there is no trace enabled. If you look at the log file it says something like:
+    <p>If you <a href="#run" class="shortcut">run</a> the application will display trace information and the metrics captured. However, if you run this without the agent, the log file will show an undefined trace:
     <pre>
     <code>
 log format: timestamp level [thread-name][traceContext][actor-path] message
@@ -134,17 +137,7 @@ log format: timestamp level [thread-name][traceContext][actor-path] message
 16:06:05.104 INFO [simple-context-propagation-akka.actor.default-dispatcher-2][undefined][akka://simple-context-propagation/user/mainActor] Length [21]
     </code>
     </pre>
-    The [traceContext] is undefined, and that's okey because we are not setting it in <a href="#code/src/main/scala/UpperCaser.scala" class="shortcut"> JobSender Actor </a>. Look at the receive method:
-    <pre>
-      <code>
-      def receive = {
-        case Begin &#8594; {
-          for(_ &#8592; 1 to 5) {
-            upperCaser ! s"Hello without context"
-          }}}
-      </code>
-    </pre>
-    But if you take a look to the next for we have set the <code>TraceContext</code>, you will note that it requires an implicit ActorSystem.
+    Let's define a Trace context. Set the <code>TraceContext</code>, note that it requires an implicit ActorSystem.
     <pre>
       <code>
        implicit val system = context.system
@@ -164,4 +157,29 @@ log format: timestamp level [thread-name][traceContext][actor-path] message
     </pre>
     If you see the big picture, you will be able to trace a request and follow your logs easily.
   </div>
+    <div><h2>What about metrics</h2>
+    <p>
+        Kamon will help you to collect custom metrics and actor metrics. In the activator example, you can check
+        <code>SimpleMetricsListener</code> as an example of how to implement a simple console metric writer. The
+        <code>SimpleMetricsListener</code> is an actor that expects a <code>TickMetricSnapshot</code>.
+        <pre>
+            <code>
+                class SimpleMetricsListener extends Actor with ActorLogging {
+
+                override def receive: Actor.Receive = {
+                    case TickMetricSnapshot(tickFrom, tickTo, metrics) => log.info("Tick From: {} nano To: {} nano => {}", tickFrom, tickTo, metrics)
+                    }
+                }
+
+                case class TickMetricSnapshot(from: Long, to: Long, metrics: Map[MetricGroupIdentity, MetricGroupSnapshot])
+
+                object SimpleExtension extends ExtensionId[SimpleExtension] with ExtensionIdProvider {
+                    def lookup(): ExtensionId[_ <: actor.Extension] = SimpleExtension
+                    def createExtension(system: ExtendedActorSystem): SimpleExtension = new SimpleExtension(system)
+                }
+            </code>
+        </pre>
+    </p>
+
+    </div>
 </body>
