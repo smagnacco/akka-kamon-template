@@ -18,6 +18,7 @@ import akka.actor
 import akka.actor._
 
 import kamon.metrics.Subscriptions.TickMetricSnapshot
+import kamon.metrics.TraceMetrics.ElapsedTime
 import kamon.metrics.{ActorMetrics, Metrics, TraceMetrics}
 import kamon.Kamon
 import kamon.trace.TraceRecorder
@@ -89,7 +90,7 @@ class SimpleExtension(system: ExtendedActorSystem) extends Kamon.Extension {
   val metricsListener = system.actorOf(Props[SimpleMetricsListener])
 
   Kamon(Metrics)(system).subscribe(TraceMetrics, "*", metricsListener, permanently = true)
-  Kamon(Metrics)(system).subscribe(ActorMetrics, "*", metricsListener, permanently = true)
+  Kamon(Metrics)(system).subscribe(ActorMetrics, "actor/*", metricsListener, permanently = true)
 
 }
 
@@ -97,7 +98,13 @@ class SimpleMetricsListener extends Actor with ActorLogging {
   log.info("Starting the Kamon(SimpleMetricsListener) extension")
 
   override def receive: Actor.Receive = {
-    case TickMetricSnapshot(tickFrom, tickTo, metrics) => log.info("Tick From: {} nano To: {} nano => {}", tickFrom, tickTo, metrics)
+    case TickMetricSnapshot(tickFrom, tickTo, metrics) => {
+      log.info("Tick From: {} nano To: {} nano => {}", tickFrom, tickTo)
+      metrics.foreach {
+        case (TraceMetrics(name), snapshot) => log.info("Trace Metrics: {} {}", name, snapshot)
+        case (ActorMetrics(name), snapshot) => log.info("Actro Metrics: {} {}", name, snapshot)
+      }
+    }
   }
 }
 
