@@ -21,6 +21,6 @@ libraryDependencies ++= Seq(
 //NOTE SBT RUN USAGE
 //If you are going to run this outside sbt, you should pass -javaagent with the aspectjweaver to jvm.
 //In order to run this within SBT, you need the following configuration
-fork in run := true
+//fork in run := true
 
-javaOptions in run += "-javaagent:-" + Path.userHome.absolutePath + "/.ivy2/cache/org.aspectj/aspectjweaver/jars/aspectjweaver-1.7.4.jar"
+javaOptions in run += "-javaagent:" + Path.userHome.absolutePath + "/.ivy2/cache/org.aspectj/aspectjweaver/jars/aspectjweaver-1.7.4.jar"

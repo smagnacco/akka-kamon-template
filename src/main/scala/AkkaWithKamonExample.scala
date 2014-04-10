@@ -18,7 +18,7 @@ import akka.actor
 import akka.actor._
 
 import kamon.metrics.Subscriptions.TickMetricSnapshot
-import kamon.metrics.{Metrics, TraceMetrics}
+import kamon.metrics.{ActorMetrics, Metrics, TraceMetrics}
 import kamon.Kamon
 import kamon.trace.TraceRecorder
 
@@ -89,6 +89,7 @@ class SimpleExtension(system: ExtendedActorSystem) extends Kamon.Extension {
   val metricsListener = system.actorOf(Props[SimpleMetricsListener])
 
   Kamon(Metrics)(system).subscribe(TraceMetrics, "*", metricsListener, permanently = true)
+  Kamon(Metrics)(system).subscribe(ActorMetrics, "*", metricsListener, permanently = true)
 
 }
 
